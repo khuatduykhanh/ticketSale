@@ -44,6 +44,12 @@ contract TicketSale is Ownable,ERC721 {
         uint256 timeEnd;
         
     }
+    struct InfoSaleTicket {
+        uint256 price;
+        uint256 timeStart;
+        uint256 timeEnd;
+        DetailTicket ticket;
+    }
 
     address[] private ListCompany;
     address public fundWallet;
@@ -56,10 +62,12 @@ contract TicketSale is Ownable,ERC721 {
     mapping (uint256 => DetailTicket) infoDetailTicket;
     mapping (uint256 => mapping(string => uint256 )) priceBySeat;
     mapping (uint256 => uint256 ) ticketByEvent;
+    mapping (uint256 => InfoSaleTicket) saleTicketByID;
     event CreateInfoCompany(address _company,string _companyName, string _location, string _hostline,string  _businessCode );
     event CreateInfoTicket (uint256 _eventId,string _venue,uint256 _startSales,uint256 _endSales,uint256 _ticketCount,uint256 _buyMax,ticketType _choice);
     event CreateInforDetailTicket (uint256 _eventId,string _name,string _describe,uint256 _timeStart,uint256 _timeEnd,string[] _seat,uint256[] _price);
     event CreateTicketId (uint256 _ticketId,string _name, string _describe,uint256 _timeStart,uint256 _timeEnd,string _seat);
+    event BuyTicket (uint256 _ticketId,uint256 _price,DetailTicket _ticket);
     constructor() ERC721 ("Ticket", "TCT") {}
     modifier onlyOwnerOTicket(uint _eventId) {
         require(eventToOwner[_eventId] == msg.sender);
@@ -178,7 +186,6 @@ contract TicketSale is Ownable,ERC721 {
         }
         DetailTicket memory detailTicket = infoDetailTicket[_eventId];
         for (uint i = 0; i < _amount; i++) {
-         //   uint256 ticketId = uint256(string memory (Strings.toString(_eventId) + bonus + Strings.toString(infoticketsale.numberOfTicketsSold)));
            string memory newEvent = Strings.toString(_eventId);
            string memory newTicketID = string.concat(newEvent,bonus);
            uint256 ticketId =   stringToUint(newTicketID) + infoticketsale.numberOfTicketsSold + 1;
@@ -188,5 +195,33 @@ contract TicketSale is Ownable,ERC721 {
             emit CreateTicketId(ticketId,detailTicket.name,detailTicket.describeDetail,detailTicket.timeStart,detailTicket.timeEnd,_seat[i]);
         }
      }
-    // function burnTicket (uint256 _eventId ) public 
+     function burnTicket (uint256 _ticketId ) public {
+        uint256 _eventId = ticketByEvent[_ticketId];
+        require(eventToOwner[_eventId] == msg.sender,"can't burn tickets");
+        _burn(_ticketId);   
+     }
+    function reSaleTicket (uint256 _ticketId,uint256 _price,uint256 _timeStart,uint256 _timeEnd) public {
+        uint256 _eventId = ticketByEvent[_ticketId];
+        DetailTicket memory detailTicket = infoDetailTicket[_eventId];
+        require(ownerOf(_ticketId) == msg.sender,"Can't sell tickets");
+        require(_timeStart < _timeEnd && _timeEnd < detailTicket.timeStart,"Please re-enter the time");
+        saleTicketByID[_ticketId] = InfoSaleTicket(_price,_timeStart,_timeEnd,detailTicket);
+        emit BuyTicket(_ticketId,_price,detailTicket);
+    }
+    function buyReSaleTicket (uint256 _ticketId,address _token ) public payable {
+        InfoSaleTicket memory inforTicket = saleTicketByID[_ticketId];
+        address from = ownerOf(_ticketId);
+        require(block.timestamp >= inforTicket.timeStart, "Sale has not started");
+        require(block.timestamp <= inforTicket.timeStart, "Sale has ended");
+        if (_token == address(0)) {
+            require(inforTicket.price == msg.value, "invalid value");
+        }
+        if (_token == address(0)) { // native token (BNB)
+            (bool isSuccess,) = from.call{value: inforTicket.price}("");
+            require(isSuccess, "Transfer failed: gas error");
+        }
+         IERC20(_token).transferFrom(msg.sender,from, inforTicket.price);
+
+       safeTransferFrom(from,msg.sender,_ticketId); 
+    }
 }
