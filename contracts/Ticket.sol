@@ -8,6 +8,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+interface MintToken {
+        function issueToken(address receiver, uint256 amount) external;
+}
+
 contract TicketSale is Ownable,ERC721 {
     
     using Counters for Counters.Counter;
@@ -158,6 +162,11 @@ contract TicketSale is Ownable,ERC721 {
     return result; // this was missing
     }
 
+    MintToken mintToken;
+    function setAddressToken (address _ckAddress) external onlyOwner {
+        mintToken = MintToken(_ckAddress);
+    
+    }
      function buyTicket (uint256 _eventId, uint256 _amount, string[] memory _seat,address _token) public payable {
         InfoTicketSale memory infoticketsale = infoEventTicket[_eventId];
         require(_amount > 0 ,"Please Please re-enter the number of tickets");
@@ -194,6 +203,7 @@ contract TicketSale is Ownable,ERC721 {
             infoticketsale.numberOfTicketsSold += 1;
             emit CreateTicketId(ticketId,detailTicket.name,detailTicket.describeDetail,detailTicket.timeStart,detailTicket.timeEnd,_seat[i]);
         }
+        mintToken.issueToken(msg.sender,_amount);
      }
      function burnTicket (uint256 _ticketId ) public {
         uint256 _eventId = ticketByEvent[_ticketId];
