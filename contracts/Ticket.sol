@@ -172,11 +172,12 @@ contract TicketSale is Ownable,ERC721 {
             require(totalFund == msg.value, "invalid value");
             
         }
-        _fowardFund(totalFund * 1/100 , _token);
+        _fowardFund(totalFund * 5/100 , _token);
         if (_token == address(0)) { // native token (BNB)
-            (bool isSuccess,) = eventToOwner[_eventId].call{value: totalFund * 99/100 }("");
+            (bool isSuccess,) = eventToOwner[_eventId].call{value: totalFund * 95/100 }("");
             require(isSuccess, "Transfer failed: gas error");
         }
+
         if (_eventId == 0 ){
             infoticketbefore.numberOfTicketsSale = 0;
         }
